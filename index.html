@@ -195,6 +195,21 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 .btn-save{background:var(--accent);color:#0a0a0a;}
 .btn-cancel{background:var(--bg4);color:var(--text2);}
 
+/* CATEGORÍAS */
+.cat-row{border-bottom:1px solid var(--border);}
+.cat-row:last-child{border-bottom:none;}
+.cat-row-head{display:flex;align-items:center;gap:9px;padding:12px 0;cursor:pointer;}
+.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.cat-name{flex:1;font-size:13px;}
+.cat-pct{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
+.cat-monto{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;}
+.cat-chevron{font-size:14px;color:var(--text3);}
+.cat-movs{overflow:hidden;}
+.cat-mov-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:8px 0 8px 19px;border-top:1px solid var(--border);}
+.cat-mov-desc{font-size:12px;}
+.cat-mov-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.cat-mov-monto{font-size:12px;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;}
+
 /* TOAST */
 .loading-bar{position:fixed;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:0;transition:opacity .2s;z-index:999;animation:loadpulse 1s ease-in-out infinite;}
 @keyframes loadpulse{0%{transform:scaleX(0);transform-origin:left}50%{transform:scaleX(1);transform-origin:left}51%{transform:scaleX(1);transform-origin:right}100%{transform:scaleX(0);transform-origin:right}}
@@ -266,6 +281,23 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
       <div id="movs-list"></div>
     </div>
 
+    <!-- CATEGORÍAS -->
+    <div class="section" id="tab-categorias">
+      <div class="filter-row">
+        <select id="fil-cat-cuenta" onchange="renderCategorias()"><option value="all">Todas las cuentas</option></select>
+        <select id="fil-cat-mes" onchange="renderCategorias()"><option value="all">Todos los meses</option></select>
+      </div>
+      <div class="tipo-row">
+        <button class="tipo-btn egreso active" id="cat-btn-e" onclick="setCatTipo('egreso')"><i class="ti ti-arrow-up-right" aria-hidden="true"></i> Egresos</button>
+        <button class="tipo-btn ingreso" id="cat-btn-i" onclick="setCatTipo('ingreso')"><i class="ti ti-arrow-down-left" aria-hidden="true"></i> Ingresos</button>
+      </div>
+      <div style="position:relative;height:220px;max-width:260px;margin:0 auto 20px;">
+        <canvas id="chart-cat" role="img" aria-label="Distribución por categoría"></canvas>
+        <div id="cat-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;"></div>
+      </div>
+      <div class="card" style="padding:0 16px;" id="cat-list"></div>
+    </div>
+
     <!-- TENDENCIA -->
     <div class="section" id="tab-tendencia">
       <div class="filter-row">
@@ -328,6 +360,7 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
     <button class="nav-btn active" onclick="showTab('registrar')" id="nav-registrar"><i class="ti ti-pencil" aria-hidden="true"></i><span>Registrar</span></button>
     <button class="nav-btn" onclick="showTab('resumen')" id="nav-resumen"><i class="ti ti-chart-bar" aria-hidden="true"></i><span>Resumen</span></button>
     <button class="nav-btn" onclick="showTab('historial')" id="nav-historial"><i class="ti ti-list" aria-hidden="true"></i><span>Historial</span></button>
+    <button class="nav-btn" onclick="showTab('categorias')" id="nav-categorias"><i class="ti ti-tag" aria-hidden="true"></i><span>Categ.</span></button>
     <button class="nav-btn" onclick="showTab('tendencia')" id="nav-tendencia"><i class="ti ti-trending-up" aria-hidden="true"></i><span>Tendencia</span></button>
     <button class="nav-btn" onclick="showTab('config')" id="nav-config"><i class="ti ti-settings" aria-hidden="true"></i><span>Config</span></button>
   </nav>
@@ -367,16 +400,35 @@ let tipo='ingreso', editTipo='ingreso', editId=null, chartInst=null;
 function ld(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return[];}}
 function sd(d){try{localStorage.setItem(KEY,JSON.stringify(d));}catch(e){}}
 function lc(){try{const c=JSON.parse(localStorage.getItem(KC));if(c)return c;}catch(e){}return{cuentas:[...DEF_CUENTAS],cats:[...DEF_CATS],sheetsUrl:''};}
-function sc(c){try{localStorage.setItem(KC,JSON.stringify(c));}catch(e){}}
+function sc(c){
+  try{localStorage.setItem(KC,JSON.stringify(c));}catch(e){}
+  fetch(SB_URL+'/rest/v1/config_usuario',{
+    method:'POST',
+    headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({clave:'config',valor:c,actualizado_at:new Date().toISOString()})
+  }).catch(e=>console.error('config sync error',e));
+}
+async function loadConfig(){
+  try{
+    const res=await fetch(SB_URL+'/rest/v1/config_usuario?clave=eq.config',{headers:SB_HEADERS});
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows.length>0&&rows[0].valor){
+      try{localStorage.setItem(KC,JSON.stringify(rows[0].valor));}catch(e){}
+      populateSelects();
+      if(document.getElementById('tab-config').classList.contains('active'))renderConfig();
+    }
+  }catch(e){console.error('loadConfig error',e);}
+}
 
 function showTab(t){
-  ['registrar','resumen','historial','tendencia','config'].forEach(s=>{
+  ['registrar','resumen','historial','categorias','tendencia','config'].forEach(s=>{
     document.getElementById('tab-'+s).classList.toggle('active',s===t);
     document.getElementById('nav-'+s).classList.toggle('active',s===t);
   });
   document.querySelector('.content').scrollTop=0;
   if(t==='resumen'){loadFromSheets().then(()=>renderResumen());}
   if(t==='historial'){populateSelects();loadFromSheets().then(()=>renderHistorial());}
+  if(t==='categorias'){loadFromSheets().then(()=>renderCategorias());}
   if(t==='tendencia'){loadFromSheets().then(()=>renderTendencia());}
   if(t==='registrar')populateSelects();
   if(t==='config')renderConfig();
@@ -449,6 +501,12 @@ async function syncToSheets(mov){
 async function loadFromSheets(){
   showLoading(true);
   try{
+    const cfgRes=await fetch(SB_URL+'/rest/v1/config_usuario?clave=eq.config',{headers:SB_HEADERS});
+    const cfgRows=await cfgRes.json();
+    if(Array.isArray(cfgRows)&&cfgRows.length>0&&cfgRows[0].valor){
+      try{localStorage.setItem(KC,JSON.stringify(cfgRows[0].valor));}catch(e){}
+      populateSelects();
+    }
     const res=await fetch(SB_URL+'/rest/v1/movimientos?select=*&order=id.asc',{headers:SB_HEADERS});
     const rows=await res.json();
     if(Array.isArray(rows)&&rows.length>0){
@@ -729,6 +787,121 @@ function renderTendencia(){
   }).join('');
 }
 
+/* CATEGORÍAS */
+let catTipo='egreso',catChart=null,catExpanded=null,_cats=[],_catTotal=0;
+const CAT_COLORS=['#a8e063','#7eb8f7','#f0a070','#c084fc','#f87171','#34d399','#fbbf24','#60a5fa','#e879f9','#2dd4bf'];
+
+function setCatTipo(t){
+  catTipo=t;
+  document.getElementById('cat-btn-e').classList.toggle('active',t==='egreso');
+  document.getElementById('cat-btn-i').classList.toggle('active',t==='ingreso');
+  renderCategorias();
+}
+
+function renderCategorias(){
+  const data=ld(),c=lc();
+  const filCuenta=document.getElementById('fil-cat-cuenta');
+  const filMes=document.getElementById('fil-cat-mes');
+  const curCuenta=filCuenta.value;
+  const curMes=filMes.value;
+
+  const meses=[...new Set(data.map(d=>getMesKey(d.fecha||d.fechaStr)))].sort().reverse();
+  filMes.innerHTML='<option value="all">Todos los meses</option>'+meses.map(m=>`<option value="${m}"${m===curMes?' selected':''}>${getMesLabel(m)}</option>`).join('');
+  filCuenta.innerHTML='<option value="all">Todas las cuentas</option>'+c.cuentas.map(x=>`<option value="${x}"${x===curCuenta?' selected':''}>${x}</option>`).join('');
+
+  let f=data.filter(d=>d.tipo===catTipo);
+  if(filCuenta.value!=='all')f=f.filter(d=>d.cuenta===filCuenta.value);
+  if(filMes.value!=='all')f=f.filter(d=>getMesKey(d.fecha||d.fechaStr)===filMes.value);
+
+  const catMap={};
+  f.forEach(d=>{
+    const cat=d.cat||'Sin categoría';
+    if(!catMap[cat])catMap[cat]={total:0,movs:[]};
+    catMap[cat].total+=d.monto;
+    catMap[cat].movs.push(d);
+  });
+  _cats=Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total);
+  _catTotal=_cats.reduce((s,[,v])=>s+v.total,0);
+
+  if(catChart){catChart.destroy();catChart=null;}
+  const ctx=document.getElementById('chart-cat').getContext('2d');
+  const centerEl=document.getElementById('cat-center');
+
+  if(!_cats.length){
+    centerEl.innerHTML='<div style="font-size:13px;color:var(--text3)">Sin datos</div>';
+    document.getElementById('cat-list').innerHTML='<div class="empty">Sin movimientos para este filtro</div>';
+    return;
+  }
+
+  centerEl.innerHTML=`<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">${catTipo==='egreso'?'Egresos':'Ingresos'}</div><div style="font-size:19px;font-weight:500;font-family:'DM Mono',monospace;letter-spacing:-.02em;">${fmt(_catTotal)}</div>`;
+
+  catChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:_cats.map(([k])=>k),
+      datasets:[{
+        data:_cats.map(([,v])=>Math.round(v.total)),
+        backgroundColor:_cats.map((_,i)=>CAT_COLORS[i%CAT_COLORS.length]),
+        borderColor:'#0a0a0a',
+        borderWidth:2,
+        hoverOffset:8
+      }]
+    },
+    options:{
+      cutout:'65%',
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)} (${_catTotal>0?Math.round(ctx.raw/_catTotal*100):0}%)`}}
+      },
+      onClick:(e,els)=>{
+        if(!els.length)return;
+        const name=_cats[els[0].index][0];
+        catExpanded=catExpanded===name?null:name;
+        renderCatList();
+      }
+    }
+  });
+  renderCatList();
+}
+
+function renderCatList(){
+  const el=document.getElementById('cat-list');
+  if(!_cats.length){el.innerHTML='<div class="empty">Sin movimientos para este filtro</div>';return;}
+  el.innerHTML=_cats.map(([name,v],i)=>{
+    const pct=_catTotal>0?Math.round(v.total/_catTotal*100):0;
+    const color=CAT_COLORS[i%CAT_COLORS.length];
+    const isOpen=catExpanded===name;
+    const movRows=isOpen?v.movs.slice().sort((a,b)=>b.id-a.id).map(m=>`
+      <div class="cat-mov-row">
+        <div class="mov-info">
+          <div class="cat-mov-desc">${m.desc}</div>
+          <div class="cat-mov-meta">${m.cuenta} · ${m.fechaStr}</div>
+        </div>
+        <div class="cat-mov-monto" style="color:${catTipo==='ingreso'?'var(--green)':'var(--red)'}">${catTipo==='ingreso'?'+':'-'}${fmt(m.monto)}</div>
+      </div>`).join(''):'';
+    const safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return`<div class="cat-row">
+      <div class="cat-row-head" onclick="toggleCatExpand(${i})">
+        <div class="cat-dot" style="background:${color}"></div>
+        <div class="cat-name">${name}</div>
+        <div class="cat-pct">${pct}%</div>
+        <div class="cat-monto">${fmt(v.total)}</div>
+        <i class="ti ${isOpen?'ti-chevron-up':'ti-chevron-down'} cat-chevron" aria-hidden="true"></i>
+      </div>
+      <div class="cat-movs">${movRows}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCatExpand(i){
+  const name=_cats[i]?_cats[i][0]:null;
+  if(!name)return;
+  catExpanded=catExpanded===name?null:name;
+  renderCatList();
+}
+
 /* INIT */
 const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -738,7 +911,8 @@ document.getElementById('fecha-hoy').textContent=DIAS[hoy.getDay()]+', '+hoy.get
 document.getElementById('header-dot').classList.add('on');
 document.getElementById('header-dot-label').textContent='sync activo';
 populateSelects();
-// Cargar datos desde Sheets al iniciar
+// Cargar config y datos desde Supabase al iniciar
+loadConfig();
 loadFromSheets();
 </script>
 </body>
