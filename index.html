@@ -288,6 +288,21 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
       <div class="chart-wrap"><canvas id="chart1" role="img" aria-label="Ingresos y egresos por cuenta"></canvas></div>
     </div>
 
+    <!-- KAKEBO -->
+    <div class="section" id="tab-kakebo">
+      <div class="welcome">
+        <div class="welcome-date">Método Kakebo</div>
+        <div class="welcome-title">Gasto vs <span>presupuesto</span></div>
+      </div>
+      <div class="filter-row">
+        <select id="fil-kk-mes" onchange="renderKakebo()"></select>
+        <select id="fil-kk-cuenta" onchange="renderKakebo()"><option value="all">Todas las cuentas</option></select>
+      </div>
+      <div class="metric-grid" id="kk-metrics"></div>
+      <div class="sec-title" style="margin-top:4px;">Por grupo Kakebo</div>
+      <div id="kk-groups"></div>
+    </div>
+
     <!-- HISTORIAL -->
     <div class="section" id="tab-historial">
       <div class="filter-row">
@@ -387,6 +402,7 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
   <nav class="nav">
     <button class="nav-btn active" onclick="showTab('registrar')" id="nav-registrar"><i class="ti ti-pencil" aria-hidden="true"></i><span>Registrar</span></button>
     <button class="nav-btn" onclick="showTab('resumen')" id="nav-resumen"><i class="ti ti-chart-bar" aria-hidden="true"></i><span>Resumen</span></button>
+    <button class="nav-btn" onclick="showTab('kakebo')" id="nav-kakebo"><i class="ti ti-notebook" aria-hidden="true"></i><span>Kakebo</span></button>
     <button class="nav-btn" onclick="showTab('historial')" id="nav-historial"><i class="ti ti-list" aria-hidden="true"></i><span>Historial</span></button>
     <button class="nav-btn" onclick="showTab('categorias')" id="nav-categorias"><i class="ti ti-tag" aria-hidden="true"></i><span>Categ.</span></button>
     <button class="nav-btn" onclick="showTab('tendencia')" id="nav-tendencia"><i class="ti ti-trending-up" aria-hidden="true"></i><span>Tendencia</span></button>
@@ -449,12 +465,13 @@ async function loadConfig(){
 }
 
 function showTab(t){
-  ['registrar','resumen','historial','categorias','tendencia','config'].forEach(s=>{
+  ['registrar','resumen','kakebo','historial','categorias','tendencia','config'].forEach(s=>{
     document.getElementById('tab-'+s).classList.toggle('active',s===t);
     document.getElementById('nav-'+s).classList.toggle('active',s===t);
   });
   document.querySelector('.content').scrollTop=0;
   if(t==='resumen'){loadFromSheets().then(()=>renderResumen());}
+  if(t==='kakebo'){loadFromSheets().then(()=>renderKakebo());}
   if(t==='historial'){populateSelects();loadFromSheets().then(()=>renderHistorial());}
   if(t==='categorias'){loadFromSheets().then(()=>renderCategorias());}
   if(t==='tendencia'){loadFromSheets().then(()=>renderTendencia());}
@@ -712,6 +729,75 @@ function renderKakeboConfig(){
 }
 function setCatGrupo(cat,g){const c=lc();c.catGrupos=c.catGrupos||{};if(g)c.catGrupos[cat]=g;else delete c.catGrupos[cat];sc(c);toast('✓ Grupo actualizado',1200);}
 function setPresup(g,v){const c=lc();c.presupuesto=c.presupuesto||{};c.presupuesto[g]=parseFloat(v)||0;sc(c);toast('✓ Presupuesto guardado',1200);}
+
+function renderKakebo(){
+  const data=ld(),c=lc();
+  const map=c.catGrupos||{},pre=c.presupuesto||{};
+  const filMes=document.getElementById('fil-kk-mes');
+  const filCuenta=document.getElementById('fil-kk-cuenta');
+  const meses=[...new Set(data.map(d=>getMesKey(d.fecha||d.fechaStr)))].sort().reverse();
+  const prevMes=filMes.value;
+  filMes.innerHTML=meses.length?meses.map(m=>`<option value="${m}">${getMesLabel(m)}</option>`).join(''):'<option value="all">Sin datos</option>';
+  if(meses.length){filMes.value=meses.includes(prevMes)?prevMes:meses[0];}
+  const prevCuenta=filCuenta.value;
+  filCuenta.innerHTML='<option value="all">Todas las cuentas</option>'+c.cuentas.map(x=>`<option value="${x}">${x}</option>`).join('');
+  filCuenta.value=prevCuenta&&(prevCuenta==='all'||c.cuentas.includes(prevCuenta))?prevCuenta:'all';
+
+  const mesSel=filMes.value;
+  let egr=data.filter(d=>d.tipo==='egreso');
+  let ing=data.filter(d=>d.tipo==='ingreso');
+  if(mesSel&&mesSel!=='all'){egr=egr.filter(d=>getMesKey(d.fecha||d.fechaStr)===mesSel);ing=ing.filter(d=>getMesKey(d.fecha||d.fechaStr)===mesSel);}
+  if(filCuenta.value!=='all'){egr=egr.filter(d=>d.cuenta===filCuenta.value);ing=ing.filter(d=>d.cuenta===filCuenta.value);}
+
+  const totalIng=ing.reduce((a,d)=>a+d.monto,0);
+  const totalEg=egr.reduce((a,d)=>a+d.monto,0);
+  const totalPre=KGROUPS.reduce((a,g)=>a+(pre[g.k]||0),0);
+
+  document.getElementById('kk-metrics').innerHTML=`
+    <div class="metric"><div class="mlabel">Ingresos del mes</div><div class="mval pos">${fmt(totalIng)}</div></div>
+    <div class="metric"><div class="mlabel">Gastado</div><div class="mval neg">${fmt(totalEg)}</div></div>
+    <div class="metric full"><div class="mlabel">Ahorro del mes</div><div class="mval ${(totalIng-totalEg)>=0?'pos':'neg'}">${fmt(totalIng-totalEg)}</div></div>`;
+
+  const sums={supervivencia:0,ocio:0,cultura:0,extra:0};let sinAsignar=0;
+  egr.forEach(d=>{const g=map[d.cat];if(g&&Object.prototype.hasOwnProperty.call(sums,g))sums[g]+=d.monto;else sinAsignar+=d.monto;});
+
+  let html='';
+  if(totalPre>0){
+    const over=totalEg>totalPre;
+    html+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:9px;"><span>Total: ${fmt(totalEg)} / ${fmt(totalPre)}</span><span style="color:${over?'var(--red)':'var(--green)'}">${over?'Excedido '+fmt(totalEg-totalPre):'Queda '+fmt(totalPre-totalEg)}</span></div>`;
+  }
+  html+=KGROUPS.map(g=>{
+    const sp=sums[g.k],bud=pre[g.k]||0;
+    const rawPct=bud>0?Math.round(sp/bud*100):0;
+    const pct=Math.min(rawPct,100);
+    const over=bud>0&&sp>bud;
+    const queda=bud-sp;
+    return`<div class="kk-card">
+      <div class="kk-card-top">
+        <span class="kk-dot" style="background:${g.c}"></span>
+        <span class="kk-card-name">${g.n}</span>
+        <span class="kk-card-vals">${fmt(sp)}${bud>0?' / '+fmt(bud):''}</span>
+      </div>
+      <div class="kk-bar"><div class="kk-bar-fill" style="width:${bud>0?pct:0}%;background:${over?'var(--red)':g.c}"></div></div>
+      <div class="kk-card-sub">
+        <span>${bud>0?rawPct+'% usado':'Sin presupuesto definido'}</span>
+        <span style="color:${over?'var(--red)':(bud>0?'var(--green)':'var(--text3)')}">${bud>0?(over?'Excedido '+fmt(-queda):'Queda '+fmt(queda)):''}</span>
+      </div>
+    </div>`;
+  }).join('');
+  if(sinAsignar>0){
+    html+=`<div class="kk-card" style="border-style:dashed;">
+      <div class="kk-card-top">
+        <span class="kk-dot" style="background:var(--text3)"></span>
+        <span class="kk-card-name">Sin asignar</span>
+        <span class="kk-card-vals">${fmt(sinAsignar)}</span>
+      </div>
+      <div class="kk-card-sub"><span>Asigná estas categorías a un grupo en Config</span><span></span></div>
+    </div>`;
+  }
+  if(!egr.length&&totalPre===0)html='<div class="empty">Sin egresos ni presupuesto todavía</div>';
+  document.getElementById('kk-groups').innerHTML=html;
+}
 function delTag(type,i){const c=lc();if(type==='cuenta')c.cuentas.splice(i,1);else c.cats.splice(i,1);sc(c);renderConfig();populateSelects();}
 function addCuenta(){const v=document.getElementById('inp-nueva-cuenta').value.trim();if(!v)return;const c=lc();if(c.cuentas.includes(v)){toast('Ya existe');return;}c.cuentas.push(v);sc(c);document.getElementById('inp-nueva-cuenta').value='';renderConfig();populateSelects();toast('Cuenta agregada');}
 function addCat(){const v=document.getElementById('inp-nueva-cat').value.trim();if(!v)return;const c=lc();if(c.cats.includes(v)){toast('Ya existe');return;}c.cats.push(v);sc(c);document.getElementById('inp-nueva-cat').value='';renderConfig();toast('Categoría agregada');}
