@@ -215,6 +215,26 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 @keyframes loadpulse{0%{transform:scaleX(0);transform-origin:left}50%{transform:scaleX(1);transform-origin:left}51%{transform:scaleX(1);transform-origin:right}100%{transform:scaleX(0);transform-origin:right}}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--bg4);border:1px solid var(--border3);color:var(--text);padding:9px 20px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:999;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* KAKEBO - CONFIG */
+.kk-map-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.kk-map-row:last-child{border-bottom:none;}
+.kk-map-cat{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.kk-map-row select{width:158px;flex-shrink:0;padding:8px 9px;border:1px solid var(--border2);border-radius:var(--r2);font-size:12px;background:var(--bg3);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;appearance:none;}
+.kk-presup-row{display:flex;align-items:center;gap:9px;padding:8px 0;}
+.kk-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.kk-presup-name{flex:1;font-size:13px;}
+.kk-presup-row input{width:130px;flex-shrink:0;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--r2);font-size:14px;background:var(--bg3);color:var(--text);font-family:'DM Mono',monospace;outline:none;text-align:right;-webkit-appearance:none;appearance:none;}
+.kk-presup-row input:focus,.kk-map-row select:focus{border-color:var(--accent);}
+
+/* KAKEBO - VIEW */
+.kk-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 15px;margin-bottom:10px;}
+.kk-card-top{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+.kk-card-name{flex:1;font-size:13px;font-weight:500;}
+.kk-card-vals{font-size:12px;font-family:'DM Mono',monospace;color:var(--text2);}
+.kk-bar{height:8px;border-radius:6px;background:var(--bg4);overflow:hidden;}
+.kk-bar-fill{height:100%;border-radius:6px;transition:width .3s;}
+.kk-card-sub{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
 </style>
 </head>
 <body>
@@ -346,6 +366,14 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
         <input type="text" id="inp-nueva-cat" placeholder="Nueva categoría..." onkeydown="if(event.key==='Enter')addCat()">
         <button onclick="addCat()">+ Agregar</button>
       </div>
+
+      <div class="sec-title" style="margin-top:4px;">Grupos Kakebo</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Asigná cada categoría a un grupo</div>
+      <div id="kakebo-cat-map"></div>
+
+      <div class="sec-title" style="margin-top:18px;">Presupuesto mensual · Kakebo</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Tope de gasto por grupo (por mes)</div>
+      <div id="kakebo-presup"></div>
 
       <div class="divider"></div>
       <div class="sec-title">Datos</div>
@@ -660,7 +688,30 @@ function renderConfig(){
   document.getElementById('sheets-url').value=c.sheetsUrl||'';
   document.getElementById('tag-cuentas').innerHTML=c.cuentas.map((x,i)=>`<span class="tag">${x}<button onclick="delTag('cuenta',${i})">×</button></span>`).join('');
   document.getElementById('tag-cats').innerHTML=c.cats.map((x,i)=>`<span class="tag">${x}<button onclick="delTag('cat',${i})">×</button></span>`).join('');
+  renderKakeboConfig();
 }
+
+/* KAKEBO */
+const KGROUPS=[
+  {k:'supervivencia',n:'Supervivencia',c:'#a8e063'},
+  {k:'ocio',n:'Ocio y caprichos',c:'#f0a070'},
+  {k:'cultura',n:'Cultura',c:'#7eb8f7'},
+  {k:'extra',n:'Extras e imprevistos',c:'#c084fc'}
+];
+function renderKakeboConfig(){
+  const c=lc();const map=c.catGrupos||{};const pre=c.presupuesto||{};
+  const mapEl=document.getElementById('kakebo-cat-map');
+  const preEl=document.getElementById('kakebo-presup');
+  if(!mapEl||!preEl)return;
+  const optsFor=sel=>'<option value="">Sin asignar</option>'+KGROUPS.map(g=>`<option value="${g.k}"${sel===g.k?' selected':''}>${g.n}</option>`).join('');
+  mapEl.innerHTML=c.cats.length?c.cats.map(cat=>{
+    const safe=cat.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return`<div class="kk-map-row"><span class="kk-map-cat">${cat}</span><select onchange="setCatGrupo('${safe}',this.value)">${optsFor(map[cat])}</select></div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--text3)">Agregá categorías primero</div>';
+  preEl.innerHTML=KGROUPS.map(g=>`<div class="kk-presup-row"><span class="kk-dot" style="background:${g.c}"></span><span class="kk-presup-name">${g.n}</span><input type="number" inputmode="decimal" placeholder="0" value="${pre[g.k]||''}" onchange="setPresup('${g.k}',this.value)"></div>`).join('');
+}
+function setCatGrupo(cat,g){const c=lc();c.catGrupos=c.catGrupos||{};if(g)c.catGrupos[cat]=g;else delete c.catGrupos[cat];sc(c);toast('✓ Grupo actualizado',1200);}
+function setPresup(g,v){const c=lc();c.presupuesto=c.presupuesto||{};c.presupuesto[g]=parseFloat(v)||0;sc(c);toast('✓ Presupuesto guardado',1200);}
 function delTag(type,i){const c=lc();if(type==='cuenta')c.cuentas.splice(i,1);else c.cats.splice(i,1);sc(c);renderConfig();populateSelects();}
 function addCuenta(){const v=document.getElementById('inp-nueva-cuenta').value.trim();if(!v)return;const c=lc();if(c.cuentas.includes(v)){toast('Ya existe');return;}c.cuentas.push(v);sc(c);document.getElementById('inp-nueva-cuenta').value='';renderConfig();populateSelects();toast('Cuenta agregada');}
 function addCat(){const v=document.getElementById('inp-nueva-cat').value.trim();if(!v)return;const c=lc();if(c.cats.includes(v)){toast('Ya existe');return;}c.cats.push(v);sc(c);document.getElementById('inp-nueva-cat').value='';renderConfig();toast('Categoría agregada');}
