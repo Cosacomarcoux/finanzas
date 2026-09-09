@@ -29,7 +29,7 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 .app{
   position:fixed;inset:0;
   display:grid;
-  grid-template-rows:var(--header-h) 1fr var(--nav-h);
+  grid-template-rows:var(--header-h) auto 1fr var(--nav-h);
   max-width:480px;margin:0 auto;
 }
 
@@ -216,6 +216,12 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--bg4);border:1px solid var(--border3);color:var(--text);padding:9px 20px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:999;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+/* SELECTOR DE NEGOCIO */
+.neg-bar{display:flex;align-items:center;gap:9px;padding:9px 18px;border-bottom:1px solid var(--border);background:var(--bg2);}
+.neg-bar > i{font-size:17px;color:var(--accent);flex-shrink:0;}
+.neg-bar select{flex:1;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--r2);font-size:13px;font-weight:600;background:var(--bg3);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px;}
+.neg-bar select:focus{border-color:var(--accent);}
+
 /* KAKEBO - CONFIG */
 .kk-map-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
 .kk-map-row:last-child{border-bottom:none;}
@@ -254,6 +260,12 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
       <span id="header-dot-label">sin sync</span>
     </div>
   </header>
+
+  <!-- SELECTOR DE NEGOCIO -->
+  <div class="neg-bar">
+    <i class="ti ti-wallet" aria-hidden="true"></i>
+    <select id="negocio-sel" onchange="onNegocioChange()"></select>
+  </div>
 
   <div id="loading-bar" class="loading-bar"></div>
   <!-- CONTENIDO -->
@@ -306,7 +318,6 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
     <!-- HISTORIAL -->
     <div class="section" id="tab-historial">
       <div class="filter-row">
-        <select id="fil-hcuenta" onchange="renderHistorial()"><option value="all">Todas las cuentas</option></select>
         <select id="fil-htipo" onchange="renderHistorial()">
           <option value="all">Todos</option>
           <option value="ingreso">Ingresos</option>
@@ -319,7 +330,6 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
     <!-- CATEGORÍAS -->
     <div class="section" id="tab-categorias">
       <div class="filter-row">
-        <select id="fil-cat-cuenta" onchange="renderCategorias()"><option value="all">Todas las cuentas</option></select>
         <select id="fil-cat-mes" onchange="renderCategorias()"><option value="all">Todos los meses</option></select>
       </div>
       <div class="tipo-row">
@@ -340,9 +350,6 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
           <option value="balance">Balance neto</option>
           <option value="ingreso">Solo ingresos</option>
           <option value="egreso">Solo egresos</option>
-        </select>
-        <select id="fil-tend-cuenta" onchange="renderTendencia()">
-          <option value="all">Todas las cuentas</option>
         </select>
       </div>
       <div class="sec-title">Evolución mensual</div>
@@ -437,7 +444,7 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 
 <script>
 const KEY='fv_data_v1', KC='fv_conf_v1';
-const DEF_CUENTAS=['Personal','Cubre Grip','Gimnasio','Challenge'];
+const DEF_CUENTAS=['Personal','Cubre Grip','Gimnasio'];
 const DEF_CATS=['Ventas','Sueldo','Materiales','Marketing','Cuotas','Inscripciones','Packaging','Gastos fijos','Otros'];
 let tipo='ingreso', editTipo='ingreso', editId=null, chartInst=null;
 
@@ -479,6 +486,24 @@ function showTab(t){
   if(t==='config')renderConfig();
 }
 
+let negocioActivo=(function(){try{return localStorage.getItem('fv_negocio')||'all';}catch(e){return'all';}})();
+function populateNegocioSel(){
+  const c=lc();const el=document.getElementById('negocio-sel');if(!el)return;
+  el.innerHTML='<option value="all">Consolidado · todos</option>'+c.cuentas.map(x=>`<option value="${x}">${x}</option>`).join('');
+  if(negocioActivo!=='all'&&!c.cuentas.includes(negocioActivo))negocioActivo='all';
+  el.value=negocioActivo;
+}
+function onNegocioChange(){
+  negocioActivo=document.getElementById('negocio-sel').value;
+  try{localStorage.setItem('fv_negocio',negocioActivo);}catch(e){}
+  const sec=document.querySelector('.section.active');
+  const tab=sec?sec.id.replace('tab-',''):'';
+  if(tab==='resumen')renderResumen();
+  else if(tab==='historial')renderHistorial();
+  else if(tab==='categorias')renderCategorias();
+  else if(tab==='tendencia')renderTendencia();
+  else if(tab==='kakebo'&&typeof renderKakebo==='function')renderKakebo();
+}
 function populateSelects(){
   const c=lc();
   const cuentasOpts=c.cuentas.map(x=>`<option>${x}</option>`).join('');
@@ -487,7 +512,7 @@ function populateSelects(){
   document.getElementById('sel-cat').innerHTML=catsOpts;
   document.getElementById('edit-cuenta').innerHTML=cuentasOpts;
   document.getElementById('edit-cat').innerHTML=catsOpts;
-  document.getElementById('fil-hcuenta').innerHTML='<option value="all">Todas las cuentas</option>'+cuentasOpts;
+  populateNegocioSel();
 }
 
 function setTipo(t){
@@ -639,12 +664,14 @@ function deleteMov(id){
 /* RESUMEN */
 function renderResumen(){
   const data=ld(),c=lc();
+  const cuentasView=negocioActivo==='all'?c.cuentas:[negocioActivo];
+  const scope=negocioActivo==='all'?data:data.filter(d=>d.cuenta===negocioActivo);
   const filMes=document.getElementById('fil-mes');
-  const meses=[...new Set(data.map(d=>getMesKey(d.fecha)))].sort().reverse();
+  const meses=[...new Set(scope.map(d=>getMesKey(d.fecha)))].sort().reverse();
   const cur=filMes.value;
   filMes.innerHTML='<option value="all">Todos los meses</option>'+meses.map(m=>`<option value="${m}"${m===cur?' selected':''}>${getMesLabel(m)}</option>`).join('');
   const filtro=filMes.value;
-  const f=filtro==='all'?data:data.filter(d=>getMesKey(d.fecha)===filtro);
+  const f=filtro==='all'?scope:scope.filter(d=>getMesKey(d.fecha)===filtro);
   const totalIn=f.filter(d=>d.tipo==='ingreso').reduce((a,d)=>a+d.monto,0);
   const totalEg=f.filter(d=>d.tipo==='egreso').reduce((a,d)=>a+d.monto,0);
   const saldo=totalIn-totalEg;
@@ -652,7 +679,9 @@ function renderResumen(){
     <div class="metric"><div class="mlabel">Ingresos</div><div class="mval pos">${fmt(totalIn)}</div></div>
     <div class="metric"><div class="mlabel">Egresos</div><div class="mval neg">${fmt(totalEg)}</div></div>
     <div class="metric full"><div class="mlabel">Balance neto</div><div class="mval ${saldo>=0?'pos':'neg'}">${fmt(saldo)}</div></div>`;
-  document.getElementById('cuentas-list').innerHTML=c.cuentas.map(ct=>{
+  const secTitle=document.querySelector('#tab-resumen .sec-title');
+  if(secTitle)secTitle.textContent=negocioActivo==='all'?'Por cuenta':'Cuenta · '+negocioActivo;
+  document.getElementById('cuentas-list').innerHTML=cuentasView.map(ct=>{
     const i=f.filter(d=>d.cuenta===ct&&d.tipo==='ingreso').reduce((a,d)=>a+d.monto,0);
     const e=f.filter(d=>d.cuenta===ct&&d.tipo==='egreso').reduce((a,d)=>a+d.monto,0);
     const s=i-e;
@@ -660,11 +689,11 @@ function renderResumen(){
   }).join('');
   if(chartInst){chartInst.destroy();chartInst=null;}
   const ctx=document.getElementById('chart1').getContext('2d');
-  const cd=c.cuentas.map(ct=>({
+  const cd=cuentasView.map(ct=>({
     i:Math.round(f.filter(d=>d.cuenta===ct&&d.tipo==='ingreso').reduce((a,d)=>a+d.monto,0)),
     e:Math.round(f.filter(d=>d.cuenta===ct&&d.tipo==='egreso').reduce((a,d)=>a+d.monto,0))
   }));
-  chartInst=new Chart(ctx,{type:'bar',data:{labels:c.cuentas,datasets:[
+  chartInst=new Chart(ctx,{type:'bar',data:{labels:cuentasView,datasets:[
     {label:'Ingresos',data:cd.map(x=>x.i),backgroundColor:'#3a6b1a',borderRadius:4},
     {label:'Egresos',data:cd.map(x=>x.e),backgroundColor:'#7a2020',borderRadius:4}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
@@ -676,7 +705,7 @@ function renderResumen(){
 /* HISTORIAL */
 function renderHistorial(){
   const data=ld();
-  const fc=document.getElementById('fil-hcuenta').value;
+  const fc=negocioActivo;
   const ft=document.getElementById('fil-htipo').value;
   let f=[...data].reverse();
   if(fc!=='all')f=f.filter(d=>d.cuenta===fc);
@@ -834,14 +863,7 @@ const COLORS=['#a8e063','#7eb8f7','#f0a070','#c084fc'];
 
 function renderTendencia(){
   const data=ld(), c=lc();
-  // Populate cuenta filter
-  const filCuenta=document.getElementById('fil-tend-cuenta');
-  const curCuenta=filCuenta.value;
-  filCuenta.innerHTML='<option value="all">Todas las cuentas</option>'+c.cuentas.map(x=>`<option value="${x}">${x}</option>`).join('');
-  if(curCuenta)filCuenta.value=curCuenta;
-
   const tipo=document.getElementById('fil-tend-tipo').value;
-  const cuentaFil=document.getElementById('fil-tend-cuenta').value;
 
   // Obtener todos los meses únicos ordenados
   const meses=[...new Set(data.map(d=>getMesKey(d.fecha||d.fechaStr)))].sort();
@@ -851,7 +873,7 @@ function renderTendencia(){
     return;
   }
 
-  const cuentas=cuentaFil==='all'?c.cuentas:[cuentaFil];
+  const cuentas=negocioActivo==='all'?c.cuentas:[negocioActivo];
 
   // Construir datasets
   const datasets=cuentas.map((cuenta,i)=>{
@@ -937,17 +959,14 @@ function setCatTipo(t){
 
 function renderCategorias(){
   const data=ld(),c=lc();
-  const filCuenta=document.getElementById('fil-cat-cuenta');
   const filMes=document.getElementById('fil-cat-mes');
-  const curCuenta=filCuenta.value;
   const curMes=filMes.value;
+  const scope=negocioActivo==='all'?data:data.filter(d=>d.cuenta===negocioActivo);
 
-  const meses=[...new Set(data.map(d=>getMesKey(d.fecha||d.fechaStr)))].sort().reverse();
+  const meses=[...new Set(scope.map(d=>getMesKey(d.fecha||d.fechaStr)))].sort().reverse();
   filMes.innerHTML='<option value="all">Todos los meses</option>'+meses.map(m=>`<option value="${m}"${m===curMes?' selected':''}>${getMesLabel(m)}</option>`).join('');
-  filCuenta.innerHTML='<option value="all">Todas las cuentas</option>'+c.cuentas.map(x=>`<option value="${x}"${x===curCuenta?' selected':''}>${x}</option>`).join('');
 
-  let f=data.filter(d=>d.tipo===catTipo);
-  if(filCuenta.value!=='all')f=f.filter(d=>d.cuenta===filCuenta.value);
+  let f=scope.filter(d=>d.tipo===catTipo);
   if(filMes.value!=='all')f=f.filter(d=>getMesKey(d.fecha||d.fechaStr)===filMes.value);
 
   const catMap={};
