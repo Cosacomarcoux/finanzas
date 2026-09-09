@@ -222,6 +222,12 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 .neg-bar select{flex:1;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--r2);font-size:13px;font-weight:600;background:var(--bg3);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px;}
 .neg-bar select:focus{border-color:var(--accent);}
 
+/* AHORRO */
+.ah-hero{background:linear-gradient(135deg,var(--green-dim),var(--bg2));border:1px solid var(--green);border-radius:var(--r);padding:18px 16px;margin-bottom:12px;}
+.ah-hero-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;font-family:'Syne',sans-serif;margin-bottom:6px;}
+.ah-hero-val{font-size:32px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;color:var(--green);}
+.ah-hero-sub{font-size:12px;margin-top:6px;font-family:'DM Mono',monospace;}
+
 /* KAKEBO - CONFIG */
 .kk-map-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
 .kk-map-row:last-child{border-bottom:none;}
@@ -261,10 +267,10 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
     </div>
   </header>
 
-  <!-- SELECTOR DE NEGOCIO -->
+  <!-- SELECTOR DE NEGOCIO Y MES -->
   <div class="neg-bar">
-    <i class="ti ti-wallet" aria-hidden="true"></i>
     <select id="negocio-sel" onchange="onNegocioChange()"></select>
+    <select id="mes-sel" onchange="onMesChange()"></select>
   </div>
 
   <div id="loading-bar" class="loading-bar"></div>
@@ -290,9 +296,6 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 
     <!-- RESUMEN -->
     <div class="section" id="tab-resumen">
-      <div class="filter-row">
-        <select id="fil-mes" onchange="renderResumen()"><option value="all">Todos los meses</option></select>
-      </div>
       <div class="metric-grid" id="metrics"></div>
       <div class="sec-title">Por cuenta</div>
       <div class="card" id="cuentas-list"></div>
@@ -300,19 +303,26 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
       <div class="chart-wrap"><canvas id="chart1" role="img" aria-label="Ingresos y egresos por cuenta"></canvas></div>
     </div>
 
-    <!-- KAKEBO -->
-    <div class="section" id="tab-kakebo">
+    <!-- AHORRO -->
+    <div class="section" id="tab-ahorro">
       <div class="welcome">
-        <div class="welcome-date">Método Kakebo</div>
-        <div class="welcome-title">Gasto vs <span>presupuesto</span></div>
+        <div class="welcome-date">Tu ahorro</div>
+        <div class="welcome-title">Patrimonio <span>apartado</span></div>
       </div>
-      <div class="filter-row">
-        <select id="fil-kk-mes" onchange="renderKakebo()"></select>
-        <select id="fil-kk-cuenta" onchange="renderKakebo()"><option value="all">Todas las cuentas</option></select>
+      <div class="ah-hero">
+        <div class="ah-hero-label" id="ah-hero-label">Deberías tener ahorrado</div>
+        <div class="ah-hero-val" id="ah-target">$0</div>
+        <div class="ah-hero-sub" id="ah-diff"></div>
       </div>
-      <div class="metric-grid" id="kk-metrics"></div>
-      <div class="sec-title" style="margin-top:4px;">Por grupo Kakebo</div>
-      <div id="kk-groups"></div>
+      <div class="metric-grid">
+        <div class="metric"><div class="mlabel">Apartado real</div><div class="mval pos" id="ah-real">$0</div></div>
+        <div class="metric"><div class="mlabel">Ingresos totales</div><div class="mval" id="ah-ingtot">$0</div></div>
+      </div>
+      <div class="sec-title" style="margin-top:6px;">Este mes</div>
+      <div id="ah-mes"></div>
+      <button class="save-btn" style="margin-top:14px;" onclick="openAhorroModal()">+ Registrar un aparte</button>
+      <div class="sec-title" style="margin-top:20px;">Últimos apartes</div>
+      <div id="ah-list"></div>
     </div>
 
     <!-- HISTORIAL -->
@@ -329,9 +339,6 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 
     <!-- CATEGORÍAS -->
     <div class="section" id="tab-categorias">
-      <div class="filter-row">
-        <select id="fil-cat-mes" onchange="renderCategorias()"><option value="all">Todos los meses</option></select>
-      </div>
       <div class="tipo-row">
         <button class="tipo-btn egreso active" id="cat-btn-e" onclick="setCatTipo('egreso')"><i class="ti ti-arrow-up-right" aria-hidden="true"></i> Egresos</button>
         <button class="tipo-btn ingreso" id="cat-btn-i" onclick="setCatTipo('ingreso')"><i class="ti ti-arrow-down-left" aria-hidden="true"></i> Ingresos</button>
@@ -389,13 +396,9 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
         <button onclick="addCat()">+ Agregar</button>
       </div>
 
-      <div class="sec-title" style="margin-top:4px;">Grupos Kakebo</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Asigná cada categoría a un grupo</div>
-      <div id="kakebo-cat-map"></div>
-
-      <div class="sec-title" style="margin-top:18px;">Presupuesto mensual · Kakebo</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Tope de gasto por grupo (por mes)</div>
-      <div id="kakebo-presup"></div>
+      <div class="sec-title" style="margin-top:4px;">Ahorro</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">% mínimo a apartar de cada ingreso</div>
+      <div class="kk-presup-row"><span class="kk-presup-name">Porcentaje de ahorro</span><input type="number" id="cfg-ahorro-pct" inputmode="decimal" placeholder="10" onchange="setAhorroPct(this.value)"></div>
 
       <div class="divider"></div>
       <div class="sec-title">Datos</div>
@@ -409,7 +412,7 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
   <nav class="nav">
     <button class="nav-btn active" onclick="showTab('registrar')" id="nav-registrar"><i class="ti ti-pencil" aria-hidden="true"></i><span>Registrar</span></button>
     <button class="nav-btn" onclick="showTab('resumen')" id="nav-resumen"><i class="ti ti-chart-bar" aria-hidden="true"></i><span>Resumen</span></button>
-    <button class="nav-btn" onclick="showTab('kakebo')" id="nav-kakebo"><i class="ti ti-notebook" aria-hidden="true"></i><span>Kakebo</span></button>
+    <button class="nav-btn" onclick="showTab('ahorro')" id="nav-ahorro"><i class="ti ti-pig-money" aria-hidden="true"></i><span>Ahorro</span></button>
     <button class="nav-btn" onclick="showTab('historial')" id="nav-historial"><i class="ti ti-list" aria-hidden="true"></i><span>Historial</span></button>
     <button class="nav-btn" onclick="showTab('categorias')" id="nav-categorias"><i class="ti ti-tag" aria-hidden="true"></i><span>Categ.</span></button>
     <button class="nav-btn" onclick="showTab('tendencia')" id="nav-tendencia"><i class="ti ti-trending-up" aria-hidden="true"></i><span>Tendencia</span></button>
@@ -436,6 +439,23 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-save" onclick="saveEdit()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AHORRO -->
+<div class="modal-backdrop" id="modal-ahorro">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Apartar para tu ahorro</div>
+      <button class="modal-close" onclick="closeAhorroModal()">×</button>
+    </div>
+    <div id="ah-modal-msg" style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.45;"></div>
+    <div class="field"><label>Cuenta</label><select id="ah-cuenta"></select></div>
+    <div class="field"><label>Monto a apartar ($)</label><input type="number" id="ah-monto" inputmode="decimal" placeholder="0"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeAhorroModal()">Ahora no</button>
+      <button class="btn-save" onclick="confirmAhorro()">Apartar</button>
     </div>
   </div>
 </div>
@@ -472,13 +492,13 @@ async function loadConfig(){
 }
 
 function showTab(t){
-  ['registrar','resumen','kakebo','historial','categorias','tendencia','config'].forEach(s=>{
+  ['registrar','resumen','ahorro','historial','categorias','tendencia','config'].forEach(s=>{
     document.getElementById('tab-'+s).classList.toggle('active',s===t);
     document.getElementById('nav-'+s).classList.toggle('active',s===t);
   });
   document.querySelector('.content').scrollTop=0;
   if(t==='resumen'){loadFromSheets().then(()=>renderResumen());}
-  if(t==='kakebo'){loadFromSheets().then(()=>renderKakebo());}
+  if(t==='ahorro'){loadFromSheets().then(()=>renderAhorro());}
   if(t==='historial'){populateSelects();loadFromSheets().then(()=>renderHistorial());}
   if(t==='categorias'){loadFromSheets().then(()=>renderCategorias());}
   if(t==='tendencia'){loadFromSheets().then(()=>renderTendencia());}
@@ -487,22 +507,39 @@ function showTab(t){
 }
 
 let negocioActivo=(function(){try{return localStorage.getItem('fv_negocio')||'all';}catch(e){return'all';}})();
+let mesActivo=getMesKey(new Date().toISOString());
 function populateNegocioSel(){
   const c=lc();const el=document.getElementById('negocio-sel');if(!el)return;
   el.innerHTML='<option value="all">Consolidado · todos</option>'+c.cuentas.map(x=>`<option value="${x}">${x}</option>`).join('');
   if(negocioActivo!=='all'&&!c.cuentas.includes(negocioActivo))negocioActivo='all';
   el.value=negocioActivo;
 }
-function onNegocioChange(){
-  negocioActivo=document.getElementById('negocio-sel').value;
-  try{localStorage.setItem('fv_negocio',negocioActivo);}catch(e){}
+function populateMesSel(){
+  const el=document.getElementById('mes-sel');if(!el)return;
+  const cur=getMesKey(new Date().toISOString());
+  const set=new Set(ld().map(d=>getMesKey(d.fecha||d.fechaStr)));set.add(cur);
+  const meses=[...set].sort().reverse();
+  if(mesActivo!=='all'&&!meses.includes(mesActivo))mesActivo=cur;
+  el.innerHTML=meses.map(m=>`<option value="${m}">${getMesLabel(m)}${m===cur?' · este mes':''}</option>`).join('')+'<option value="all">Todos los meses</option>';
+  el.value=mesActivo;
+}
+function reRenderActive(){
   const sec=document.querySelector('.section.active');
   const tab=sec?sec.id.replace('tab-',''):'';
   if(tab==='resumen')renderResumen();
   else if(tab==='historial')renderHistorial();
   else if(tab==='categorias')renderCategorias();
   else if(tab==='tendencia')renderTendencia();
-  else if(tab==='kakebo'&&typeof renderKakebo==='function')renderKakebo();
+  else if(tab==='ahorro')renderAhorro();
+}
+function onNegocioChange(){
+  negocioActivo=document.getElementById('negocio-sel').value;
+  try{localStorage.setItem('fv_negocio',negocioActivo);}catch(e){}
+  reRenderActive();
+}
+function onMesChange(){
+  mesActivo=document.getElementById('mes-sel').value;
+  reRenderActive();
 }
 function populateSelects(){
   const c=lc();
@@ -513,6 +550,7 @@ function populateSelects(){
   document.getElementById('edit-cuenta').innerHTML=cuentasOpts;
   document.getElementById('edit-cat').innerHTML=catsOpts;
   populateNegocioSel();
+  populateMesSel();
 }
 
 function setTipo(t){
@@ -591,6 +629,7 @@ async function loadFromSheets(){
         fecha:r.fecha||new Date().toISOString()
       }));
       sd(mapped);
+      populateMesSel();
       return true;
     }
   }catch(e){console.error('load error',e);}
@@ -617,6 +656,10 @@ function guardar(pre){
   data.push(mov);sd(data);syncToSheets(mov);
   if(!pre){document.getElementById('inp-monto').value='';document.getElementById('inp-desc').value='';}
   toast(t==='ingreso'?'✓ Ingreso guardado':'✓ Egreso guardado');
+  if(t==='ingreso'&&!pre){
+    const p=getAhorroPct();const sug=monto*p/100;
+    openAhorroModal({cuenta:cuenta,monto:sug,msg:'Ingreso de '+fmt(monto)+' en '+cuenta+'. Apartá al menos el '+p+'% ('+fmt(sug)+') para tu ahorro.'});
+  }
   return true;
 }
 
@@ -666,11 +709,7 @@ function renderResumen(){
   const data=ld(),c=lc();
   const cuentasView=negocioActivo==='all'?c.cuentas:[negocioActivo];
   const scope=negocioActivo==='all'?data:data.filter(d=>d.cuenta===negocioActivo);
-  const filMes=document.getElementById('fil-mes');
-  const meses=[...new Set(scope.map(d=>getMesKey(d.fecha)))].sort().reverse();
-  const cur=filMes.value;
-  filMes.innerHTML='<option value="all">Todos los meses</option>'+meses.map(m=>`<option value="${m}"${m===cur?' selected':''}>${getMesLabel(m)}</option>`).join('');
-  const filtro=filMes.value;
+  const filtro=mesActivo;
   const f=filtro==='all'?scope:scope.filter(d=>getMesKey(d.fecha)===filtro);
   const totalIn=f.filter(d=>d.tipo==='ingreso').reduce((a,d)=>a+d.monto,0);
   const totalEg=f.filter(d=>d.tipo==='egreso').reduce((a,d)=>a+d.monto,0);
@@ -709,9 +748,10 @@ function renderHistorial(){
   const ft=document.getElementById('fil-htipo').value;
   let f=[...data].reverse();
   if(fc!=='all')f=f.filter(d=>d.cuenta===fc);
+  if(mesActivo!=='all')f=f.filter(d=>getMesKey(d.fecha||d.fechaStr)===mesActivo);
   if(ft!=='all')f=f.filter(d=>d.tipo===ft);
   const el=document.getElementById('movs-list');
-  if(!f.length){el.innerHTML='<div class="empty">Sin movimientos todavía</div>';return;}
+  if(!f.length){el.innerHTML='<div class="empty">Sin movimientos en este período</div>';return;}
   el.innerHTML=f.map(d=>`
     <div class="mov-item">
       <div class="mov-top">
@@ -734,98 +774,95 @@ function renderConfig(){
   document.getElementById('sheets-url').value=c.sheetsUrl||'';
   document.getElementById('tag-cuentas').innerHTML=c.cuentas.map((x,i)=>`<span class="tag">${x}<button onclick="delTag('cuenta',${i})">×</button></span>`).join('');
   document.getElementById('tag-cats').innerHTML=c.cats.map((x,i)=>`<span class="tag">${x}<button onclick="delTag('cat',${i})">×</button></span>`).join('');
-  renderKakeboConfig();
+  renderAhorroConfig();
 }
 
-/* KAKEBO */
-const KGROUPS=[
-  {k:'supervivencia',n:'Supervivencia',c:'#a8e063'},
-  {k:'ocio',n:'Ocio y caprichos',c:'#f0a070'},
-  {k:'cultura',n:'Cultura',c:'#7eb8f7'},
-  {k:'extra',n:'Extras e imprevistos',c:'#c084fc'}
-];
-function renderKakeboConfig(){
-  const c=lc();const map=c.catGrupos||{};const pre=c.presupuesto||{};
-  const mapEl=document.getElementById('kakebo-cat-map');
-  const preEl=document.getElementById('kakebo-presup');
-  if(!mapEl||!preEl)return;
-  const optsFor=sel=>'<option value="">Sin asignar</option>'+KGROUPS.map(g=>`<option value="${g.k}"${sel===g.k?' selected':''}>${g.n}</option>`).join('');
-  mapEl.innerHTML=c.cats.length?c.cats.map(cat=>{
-    const safe=cat.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return`<div class="kk-map-row"><span class="kk-map-cat">${cat}</span><select onchange="setCatGrupo('${safe}',this.value)">${optsFor(map[cat])}</select></div>`;
-  }).join(''):'<div style="font-size:12px;color:var(--text3)">Agregá categorías primero</div>';
-  preEl.innerHTML=KGROUPS.map(g=>`<div class="kk-presup-row"><span class="kk-dot" style="background:${g.c}"></span><span class="kk-presup-name">${g.n}</span><input type="number" inputmode="decimal" placeholder="0" value="${pre[g.k]||''}" onchange="setPresup('${g.k}',this.value)"></div>`).join('');
-}
-function setCatGrupo(cat,g){const c=lc();c.catGrupos=c.catGrupos||{};if(g)c.catGrupos[cat]=g;else delete c.catGrupos[cat];sc(c);toast('✓ Grupo actualizado',1200);}
-function setPresup(g,v){const c=lc();c.presupuesto=c.presupuesto||{};c.presupuesto[g]=parseFloat(v)||0;sc(c);toast('✓ Presupuesto guardado',1200);}
+/* AHORRO */
+const AHORRO_PCT=10;
+function laHorros(){const c=lc();return Array.isArray(c.ahorros)?c.ahorros:[];}
+function getAhorroPct(){const c=lc();const v=parseFloat(c.ahorroPct);return (!isNaN(v)&&v>0)?v:AHORRO_PCT;}
+function setAhorroPct(v){const c=lc();c.ahorroPct=parseFloat(v)||AHORRO_PCT;sc(c);toast('✓ % de ahorro guardado',1200);}
+function renderAhorroConfig(){const el=document.getElementById('cfg-ahorro-pct');if(el)el.value=getAhorroPct();}
 
-function renderKakebo(){
-  const data=ld(),c=lc();
-  const map=c.catGrupos||{},pre=c.presupuesto||{};
-  const filMes=document.getElementById('fil-kk-mes');
-  const filCuenta=document.getElementById('fil-kk-cuenta');
-  const meses=[...new Set(data.map(d=>getMesKey(d.fecha||d.fechaStr)))].sort().reverse();
-  const prevMes=filMes.value;
-  filMes.innerHTML=meses.length?meses.map(m=>`<option value="${m}">${getMesLabel(m)}</option>`).join(''):'<option value="all">Sin datos</option>';
-  if(meses.length){filMes.value=meses.includes(prevMes)?prevMes:meses[0];}
-  const prevCuenta=filCuenta.value;
-  filCuenta.innerHTML='<option value="all">Todas las cuentas</option>'+c.cuentas.map(x=>`<option value="${x}">${x}</option>`).join('');
-  filCuenta.value=prevCuenta&&(prevCuenta==='all'||c.cuentas.includes(prevCuenta))?prevCuenta:'all';
-
-  const mesSel=filMes.value;
-  let egr=data.filter(d=>d.tipo==='egreso');
-  let ing=data.filter(d=>d.tipo==='ingreso');
-  if(mesSel&&mesSel!=='all'){egr=egr.filter(d=>getMesKey(d.fecha||d.fechaStr)===mesSel);ing=ing.filter(d=>getMesKey(d.fecha||d.fechaStr)===mesSel);}
-  if(filCuenta.value!=='all'){egr=egr.filter(d=>d.cuenta===filCuenta.value);ing=ing.filter(d=>d.cuenta===filCuenta.value);}
-
-  const totalIng=ing.reduce((a,d)=>a+d.monto,0);
-  const totalEg=egr.reduce((a,d)=>a+d.monto,0);
-  const totalPre=KGROUPS.reduce((a,g)=>a+(pre[g.k]||0),0);
-
-  document.getElementById('kk-metrics').innerHTML=`
-    <div class="metric"><div class="mlabel">Ingresos del mes</div><div class="mval pos">${fmt(totalIng)}</div></div>
-    <div class="metric"><div class="mlabel">Gastado</div><div class="mval neg">${fmt(totalEg)}</div></div>
-    <div class="metric full"><div class="mlabel">Ahorro del mes</div><div class="mval ${(totalIng-totalEg)>=0?'pos':'neg'}">${fmt(totalIng-totalEg)}</div></div>`;
-
-  const sums={supervivencia:0,ocio:0,cultura:0,extra:0};let sinAsignar=0;
-  egr.forEach(d=>{const g=map[d.cat];if(g&&Object.prototype.hasOwnProperty.call(sums,g))sums[g]+=d.monto;else sinAsignar+=d.monto;});
-
-  let html='';
-  if(totalPre>0){
-    const over=totalEg>totalPre;
-    html+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:9px;"><span>Total: ${fmt(totalEg)} / ${fmt(totalPre)}</span><span style="color:${over?'var(--red)':'var(--green)'}">${over?'Excedido '+fmt(totalEg-totalPre):'Queda '+fmt(totalPre-totalEg)}</span></div>`;
-  }
-  html+=KGROUPS.map(g=>{
-    const sp=sums[g.k],bud=pre[g.k]||0;
-    const rawPct=bud>0?Math.round(sp/bud*100):0;
-    const pct=Math.min(rawPct,100);
-    const over=bud>0&&sp>bud;
-    const queda=bud-sp;
-    return`<div class="kk-card">
+function renderAhorro(){
+  const data=ld();
+  const pct=getAhorroPct();
+  const ahorros=laHorros();
+  const scope=negocioActivo==='all'?data:data.filter(d=>d.cuenta===negocioActivo);
+  const ahScope=negocioActivo==='all'?ahorros:ahorros.filter(a=>a.cuenta===negocioActivo);
+  const lbl=document.getElementById('ah-hero-label');
+  if(lbl)lbl.textContent='Deberías tener ahorrado · '+pct+'% de tus ingresos';
+  const ingTot=scope.filter(d=>d.tipo==='ingreso').reduce((a,d)=>a+d.monto,0);
+  const target=ingTot*pct/100;
+  const real=ahScope.reduce((a,d)=>a+(parseFloat(d.monto)||0),0);
+  const diff=real-target;
+  document.getElementById('ah-target').textContent=fmt(target);
+  document.getElementById('ah-real').textContent=fmt(real);
+  document.getElementById('ah-ingtot').textContent=fmt(ingTot);
+  const diffEl=document.getElementById('ah-diff');
+  if(target<=0){diffEl.textContent='Cargá tus ingresos para ver tu meta';diffEl.style.color='var(--text3)';}
+  else if(diff>=0){diffEl.textContent='¡Vas al día! Te sobran '+fmt(diff);diffEl.style.color='var(--green)';}
+  else{diffEl.textContent='Te falta apartar '+fmt(-diff);diffEl.style.color='var(--red)';}
+  const mesKey=mesActivo==='all'?getMesKey(new Date().toISOString()):mesActivo;
+  const ingMes=scope.filter(d=>d.tipo==='ingreso'&&getMesKey(d.fecha||d.fechaStr)===mesKey).reduce((a,d)=>a+d.monto,0);
+  const debeMes=ingMes*pct/100;
+  const apartMes=ahScope.filter(a=>getMesKey(a.fecha||a.fechaStr)===mesKey).reduce((a,d)=>a+(parseFloat(d.monto)||0),0);
+  const pctMes=debeMes>0?Math.min(Math.round(apartMes/debeMes*100),100):0;
+  const okMes=debeMes>0&&apartMes>=debeMes;
+  document.getElementById('ah-mes').innerHTML=`
+    <div class="kk-card">
       <div class="kk-card-top">
-        <span class="kk-dot" style="background:${g.c}"></span>
-        <span class="kk-card-name">${g.n}</span>
-        <span class="kk-card-vals">${fmt(sp)}${bud>0?' / '+fmt(bud):''}</span>
+        <span class="kk-card-name">${getMesLabel(mesKey)}</span>
+        <span class="kk-card-vals">${fmt(apartMes)} / ${fmt(debeMes)}</span>
       </div>
-      <div class="kk-bar"><div class="kk-bar-fill" style="width:${bud>0?pct:0}%;background:${over?'var(--red)':g.c}"></div></div>
+      <div class="kk-bar"><div class="kk-bar-fill" style="width:${pctMes}%;background:${okMes?'var(--green)':'var(--accent)'}"></div></div>
       <div class="kk-card-sub">
-        <span>${bud>0?rawPct+'% usado':'Sin presupuesto definido'}</span>
-        <span style="color:${over?'var(--red)':(bud>0?'var(--green)':'var(--text3)')}">${bud>0?(over?'Excedido '+fmt(-queda):'Queda '+fmt(queda)):''}</span>
+        <span>Ingresos del mes: ${fmt(ingMes)}</span>
+        <span style="color:${okMes?'var(--green)':'var(--text3)'}">${debeMes>0?(okMes?'✓ cumplido':'Te falta '+fmt(Math.max(debeMes-apartMes,0))):'—'}</span>
       </div>
     </div>`;
-  }).join('');
-  if(sinAsignar>0){
-    html+=`<div class="kk-card" style="border-style:dashed;">
-      <div class="kk-card-top">
-        <span class="kk-dot" style="background:var(--text3)"></span>
-        <span class="kk-card-name">Sin asignar</span>
-        <span class="kk-card-vals">${fmt(sinAsignar)}</span>
+  const list=ahScope.slice().sort((a,b)=>b.id-a.id).slice(0,20);
+  document.getElementById('ah-list').innerHTML=list.length?list.map(a=>`
+    <div class="mov-item">
+      <div class="mov-top">
+        <div class="mov-info">
+          <div class="mov-desc">Aparté a ahorro</div>
+          <div class="mov-meta">${a.cuenta} · ${a.fechaStr}</div>
+        </div>
+        <div class="mov-monto" style="color:var(--green)">+${fmt(a.monto)}</div>
       </div>
-      <div class="kk-card-sub"><span>Asigná estas categorías a un grupo en Config</span><span></span></div>
-    </div>`;
-  }
-  if(!egr.length&&totalPre===0)html='<div class="empty">Sin egresos ni presupuesto todavía</div>';
-  document.getElementById('kk-groups').innerHTML=html;
+      <div class="mov-actions">
+        <button class="mov-btn del" onclick="delAhorro('${a.id}')"><i class="ti ti-trash" style="font-size:12px" aria-hidden="true"></i> Eliminar</button>
+      </div>
+    </div>`).join(''):'<div class="empty">Todavía no registraste apartes</div>';
+}
+function openAhorroModal(pre){
+  const c=lc();
+  const sel=document.getElementById('ah-cuenta');
+  sel.innerHTML=c.cuentas.map(x=>`<option>${x}</option>`).join('');
+  sel.value=pre&&pre.cuenta?pre.cuenta:(negocioActivo!=='all'?negocioActivo:(c.cuentas[0]||''));
+  document.getElementById('ah-monto').value=pre&&pre.monto?Math.round(pre.monto):'';
+  document.getElementById('ah-modal-msg').textContent=pre&&pre.msg?pre.msg:'Registrá cuánto apartás para tu ahorro. Esta plata no cuenta como gasto.';
+  document.getElementById('modal-ahorro').classList.add('open');
+}
+function closeAhorroModal(){document.getElementById('modal-ahorro').classList.remove('open');}
+function confirmAhorro(){
+  const cuenta=document.getElementById('ah-cuenta').value;
+  const monto=parseFloat(document.getElementById('ah-monto').value);
+  if(!monto||monto<=0){toast('Ingresá un monto válido');return;}
+  const c=lc();c.ahorros=Array.isArray(c.ahorros)?c.ahorros:[];
+  const now=new Date();
+  c.ahorros.push({id:Date.now(),cuenta:cuenta,monto:monto,fecha:now.toISOString(),fechaStr:now.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})});
+  sc(c);
+  closeAhorroModal();
+  toast('✓ '+fmt(monto)+' apartado a tu ahorro');
+  const sec=document.querySelector('.section.active');
+  if(sec&&sec.id==='tab-ahorro')renderAhorro();
+}
+function delAhorro(id){
+  if(!confirm('¿Eliminar este aparte?'))return;
+  const c=lc();c.ahorros=(Array.isArray(c.ahorros)?c.ahorros:[]).filter(a=>String(a.id)!==String(id));
+  sc(c);renderAhorro();toast('Aparte eliminado');
 }
 function delTag(type,i){const c=lc();if(type==='cuenta')c.cuentas.splice(i,1);else c.cats.splice(i,1);sc(c);renderConfig();populateSelects();}
 function addCuenta(){const v=document.getElementById('inp-nueva-cuenta').value.trim();if(!v)return;const c=lc();if(c.cuentas.includes(v)){toast('Ya existe');return;}c.cuentas.push(v);sc(c);document.getElementById('inp-nueva-cuenta').value='';renderConfig();populateSelects();toast('Cuenta agregada');}
@@ -959,15 +996,9 @@ function setCatTipo(t){
 
 function renderCategorias(){
   const data=ld(),c=lc();
-  const filMes=document.getElementById('fil-cat-mes');
-  const curMes=filMes.value;
   const scope=negocioActivo==='all'?data:data.filter(d=>d.cuenta===negocioActivo);
-
-  const meses=[...new Set(scope.map(d=>getMesKey(d.fecha||d.fechaStr)))].sort().reverse();
-  filMes.innerHTML='<option value="all">Todos los meses</option>'+meses.map(m=>`<option value="${m}"${m===curMes?' selected':''}>${getMesLabel(m)}</option>`).join('');
-
   let f=scope.filter(d=>d.tipo===catTipo);
-  if(filMes.value!=='all')f=f.filter(d=>getMesKey(d.fecha||d.fechaStr)===filMes.value);
+  if(mesActivo!=='all')f=f.filter(d=>getMesKey(d.fecha||d.fechaStr)===mesActivo);
 
   const catMap={};
   f.forEach(d=>{
