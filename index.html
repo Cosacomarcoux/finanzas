@@ -715,7 +715,8 @@ function renderResumen(){
   const totalIn=f.filter(d=>d.tipo==='ingreso').reduce((a,d)=>a+d.monto,0);
   const totalEg=f.filter(d=>d.tipo==='egreso').reduce((a,d)=>a+d.monto,0);
   const ahAll=Array.isArray(c.ahorros)?c.ahorros:[];
-  const ahF=(negocioActivo==='all'?ahAll:ahAll.filter(a=>a.cuenta===negocioActivo)).filter(a=>filtro==='all'||getMesKey(a.fecha||a.fechaStr)===filtro);
+  const ahBase=Number(c.ahorroBase)||0;
+  const ahF=(negocioActivo==='all'?ahAll:ahAll.filter(a=>a.cuenta===negocioActivo)).filter(a=>(Number(a.id)||0)>=ahBase&&(filtro==='all'||getMesKey(a.fecha||a.fechaStr)===filtro));
   const apartado=ahF.reduce((s,a)=>s+(parseFloat(a.monto)||0),0);
   const bal=totalIn-totalEg-apartado;
   document.getElementById('metrics').innerHTML=`
@@ -876,8 +877,8 @@ function delAhorro(id){
   sc(c);renderAhorro();toast('Aparte eliminado');
 }
 function resetAhorro(){
-  if(!confirm('¿Poner tu ahorro en 0 y empezar a contar desde ahora?'))return;
-  const c=lc();c.ahorroBase=Date.now();sc(c);renderAhorro();toast('✓ Ahorro reiniciado en 0');
+  if(!confirm('¿Reiniciar tu ahorro a 0? Se borran todos los apartes registrados.'))return;
+  const c=lc();c.ahorros=[];c.ahorroBase=Date.now();sc(c);renderAhorro();toast('✓ Ahorro reiniciado a 0');
 }
 function delTag(type,i){const c=lc();if(type==='cuenta')c.cuentas.splice(i,1);else c.cats.splice(i,1);sc(c);renderConfig();populateSelects();}
 function addCuenta(){const v=document.getElementById('inp-nueva-cuenta').value.trim();if(!v)return;const c=lc();if(c.cuentas.includes(v)){toast('Ya existe');return;}c.cuentas.push(v);sc(c);document.getElementById('inp-nueva-cuenta').value='';renderConfig();populateSelects();toast('Cuenta agregada');}
