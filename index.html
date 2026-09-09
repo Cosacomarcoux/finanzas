@@ -316,8 +316,9 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
       </div>
       <div class="metric-grid">
         <div class="metric"><div class="mlabel">Apartado real</div><div class="mval pos" id="ah-real">$0</div></div>
-        <div class="metric"><div class="mlabel">Ingresos totales</div><div class="mval" id="ah-ingtot">$0</div></div>
+        <div class="metric"><div class="mlabel">Ingresos contados</div><div class="mval" id="ah-ingtot">$0</div></div>
       </div>
+      <div id="ah-desde" style="font-size:11px;color:var(--text3);margin:2px 0 14px;font-family:'DM Mono',monospace;"></div>
       <div class="sec-title" style="margin-top:6px;">Este mes</div>
       <div id="ah-mes"></div>
       <button class="save-btn" style="margin-top:14px;" onclick="openAhorroModal()">+ Registrar un aparte</button>
@@ -787,12 +788,18 @@ function renderAhorroConfig(){const el=document.getElementById('cfg-ahorro-pct')
 function renderAhorro(){
   const data=ld();
   const pct=getAhorroPct();
-  const ahorros=laHorros();
+  const c=lc();
+  if(c.ahorroBase==null){c.ahorroBase=Date.now();sc(c);}
+  const base=Number(c.ahorroBase)||0;
+  const idOf=x=>Number(x.id)||0;
+  const ahorros=laHorros().filter(a=>idOf(a)>=base);
   const scope=negocioActivo==='all'?data:data.filter(d=>d.cuenta===negocioActivo);
   const ahScope=negocioActivo==='all'?ahorros:ahorros.filter(a=>a.cuenta===negocioActivo);
   const lbl=document.getElementById('ah-hero-label');
   if(lbl)lbl.textContent='Deberías tener ahorrado · '+pct+'% de tus ingresos';
-  const ingTot=scope.filter(d=>d.tipo==='ingreso').reduce((a,d)=>a+d.monto,0);
+  const desdeEl=document.getElementById('ah-desde');
+  if(desdeEl){const dd=new Date(base);desdeEl.innerHTML='Contando desde '+(isNaN(dd.getTime())?'—':dd.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}))+' · <a href="#" onclick="resetAhorro();return false;" style="color:var(--accent);text-decoration:none;">Reiniciar a 0</a>';}
+  const ingTot=scope.filter(d=>d.tipo==='ingreso'&&idOf(d)>=base).reduce((a,d)=>a+d.monto,0);
   const target=ingTot*pct/100;
   const real=ahScope.reduce((a,d)=>a+(parseFloat(d.monto)||0),0);
   const diff=real-target;
@@ -804,7 +811,7 @@ function renderAhorro(){
   else if(diff>=0){diffEl.textContent='¡Vas al día! Te sobran '+fmt(diff);diffEl.style.color='var(--green)';}
   else{diffEl.textContent='Te falta apartar '+fmt(-diff);diffEl.style.color='var(--red)';}
   const mesKey=mesActivo==='all'?getMesKey(new Date().toISOString()):mesActivo;
-  const ingMes=scope.filter(d=>d.tipo==='ingreso'&&getMesKey(d.fecha||d.fechaStr)===mesKey).reduce((a,d)=>a+d.monto,0);
+  const ingMes=scope.filter(d=>d.tipo==='ingreso'&&idOf(d)>=base&&getMesKey(d.fecha||d.fechaStr)===mesKey).reduce((a,d)=>a+d.monto,0);
   const debeMes=ingMes*pct/100;
   const apartMes=ahScope.filter(a=>getMesKey(a.fecha||a.fechaStr)===mesKey).reduce((a,d)=>a+(parseFloat(d.monto)||0),0);
   const pctMes=debeMes>0?Math.min(Math.round(apartMes/debeMes*100),100):0;
@@ -863,6 +870,10 @@ function delAhorro(id){
   if(!confirm('¿Eliminar este aparte?'))return;
   const c=lc();c.ahorros=(Array.isArray(c.ahorros)?c.ahorros:[]).filter(a=>String(a.id)!==String(id));
   sc(c);renderAhorro();toast('Aparte eliminado');
+}
+function resetAhorro(){
+  if(!confirm('¿Poner tu ahorro en 0 y empezar a contar desde ahora?'))return;
+  const c=lc();c.ahorroBase=Date.now();sc(c);renderAhorro();toast('✓ Ahorro reiniciado en 0');
 }
 function delTag(type,i){const c=lc();if(type==='cuenta')c.cuentas.splice(i,1);else c.cats.splice(i,1);sc(c);renderConfig();populateSelects();}
 function addCuenta(){const v=document.getElementById('inp-nueva-cuenta').value.trim();if(!v)return;const c=lc();if(c.cuentas.includes(v)){toast('Ya existe');return;}c.cuentas.push(v);sc(c);document.getElementById('inp-nueva-cuenta').value='';renderConfig();populateSelects();toast('Cuenta agregada');}
