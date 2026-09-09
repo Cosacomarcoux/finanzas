@@ -81,6 +81,8 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 .welcome-date{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;font-family:'Syne',sans-serif;margin-bottom:4px;}
 .welcome-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.25;}
 .welcome-title span{color:var(--accent);}
+.frase-dia{background:var(--green-dim);border:1px solid #2e4a17;border-radius:var(--r);padding:12px 14px;margin:14px 0 4px;font-size:13.5px;line-height:1.4;color:var(--green);display:flex;gap:9px;align-items:flex-start;}
+.frase-dia i{font-size:16px;margin-top:1px;flex-shrink:0;opacity:.9;}
 
 /* TIPO */
 .tipo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
@@ -283,6 +285,7 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
         <div class="welcome-date" id="fecha-hoy"></div>
         <div class="welcome-title">Nuevo <span>movimiento</span></div>
       </div>
+      <div class="frase-dia" id="frase-dia"></div>
       <div class="tipo-row">
         <button class="tipo-btn ingreso active" id="btn-i" onclick="setTipo('ingreso')"><i class="ti ti-arrow-down-left" aria-hidden="true"></i> Ingreso</button>
         <button class="tipo-btn egreso" id="btn-e" onclick="setTipo('egreso')"><i class="ti ti-arrow-up-right" aria-hidden="true"></i> Egreso</button>
@@ -503,7 +506,7 @@ function showTab(t){
   if(t==='historial'){populateSelects();loadFromSheets().then(()=>renderHistorial());}
   if(t==='categorias'){loadFromSheets().then(()=>renderCategorias());}
   if(t==='tendencia'){loadFromSheets().then(()=>renderTendencia());}
-  if(t==='registrar')populateSelects();
+  if(t==='registrar'){populateSelects();renderFraseDia();}
   if(t==='config')renderConfig();
 }
 
@@ -863,11 +866,22 @@ function confirmAhorro(){
   const monto=parseFloat(document.getElementById('ah-monto').value);
   if(!monto||monto<=0){toast('Ingresá un monto válido');return;}
   const c=lc();c.ahorros=Array.isArray(c.ahorros)?c.ahorros:[];
+  const base=Number(c.ahorroBase)||0;const pct=getAhorroPct();
+  const mesKey=getMesKey(new Date().toISOString());
+  const idOf=x=>Number(x.id)||0;
+  const dataM=ld();
+  const ingMes=dataM.filter(d=>d.tipo==='ingreso'&&idOf(d)>=base&&getMesKey(d.fecha||d.fechaStr)===mesKey).reduce((a,d)=>a+d.monto,0);
+  const debeMes=ingMes*pct/100;
+  const prevMes=c.ahorros.filter(a=>idOf(a)>=base&&getMesKey(a.fecha||a.fechaStr)===mesKey).reduce((a,d)=>a+(parseFloat(d.monto)||0),0);
   const now=new Date();
   c.ahorros.push({id:Date.now(),cuenta:cuenta,monto:monto,fecha:now.toISOString(),fechaStr:now.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})});
   sc(c);
   closeAhorroModal();
-  toast('✓ '+fmt(monto)+' apartado a tu ahorro');
+  if(debeMes>0&&prevMes<debeMes&&(prevMes+monto)>=debeMes){
+    toast('🎉 ¡Cumpliste tu meta de ahorro de '+getMesLabel(mesKey)+'! Subiste el termostato 🌡️',4200);
+  }else{
+    toast('✓ '+fmt(monto)+' apartado a tu ahorro');
+  }
   const sec=document.querySelector('.section.active');
   if(sec&&sec.id==='tab-ahorro')renderAhorro();
 }
@@ -1105,6 +1119,30 @@ function toggleCatExpand(i){
   renderCatList();
 }
 
+/* FRASE DEL DÍA */
+const FRASES=[
+  "Primero aparto, después gasto. Así se sube el termostato.",
+  "Cada peso que guardo es una prueba de que puedo con más.",
+  "Mi plata la ordeno yo, no mis impulsos.",
+  "Ganar más no me asusta: tengo el sistema para sostenerlo.",
+  "El ahorro no es lo que sobra: es lo primero que aparto.",
+  "Le digo que sí a lo que me hace crecer y que no a lo que me frena.",
+  "Administro bien lo que tengo, por eso puedo manejar más.",
+  "Mi termostato sube un grado con cada decisión ordenada.",
+  "No trabajo solo por plata: hago que la plata también trabaje.",
+  "Aprendo algo nuevo de finanzas cada semana.",
+  "Merezco manejar más plata, y me estoy preparando para eso.",
+  "Hoy elijo la versión de mí que ordena, no la que se descontrola.",
+  "Lo que mido, lo mejoro. Por eso reviso mis números.",
+  "Un mes ordenado no es suerte: es un termostato nuevo."
+];
+function renderFraseDia(){
+  const el=document.getElementById('frase-dia');if(!el)return;
+  const n=new Date();const start=new Date(n.getFullYear(),0,0);
+  const day=Math.floor((n-start)/86400000);
+  el.innerHTML='<i class="ti ti-flame" aria-hidden="true"></i><span>'+FRASES[day%FRASES.length]+'</span>';
+}
+
 /* INIT */
 const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -1114,6 +1152,7 @@ document.getElementById('fecha-hoy').textContent=DIAS[hoy.getDay()]+', '+hoy.get
 document.getElementById('header-dot').classList.add('on');
 document.getElementById('header-dot-label').textContent='sync activo';
 populateSelects();
+renderFraseDia();
 // Cargar config y datos desde Supabase al iniciar
 loadConfig();
 loadFromSheets();
