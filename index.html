@@ -717,14 +717,12 @@ function renderResumen(){
   const ahAll=Array.isArray(c.ahorros)?c.ahorros:[];
   const ahF=(negocioActivo==='all'?ahAll:ahAll.filter(a=>a.cuenta===negocioActivo)).filter(a=>filtro==='all'||getMesKey(a.fecha||a.fechaStr)===filtro);
   const apartado=ahF.reduce((s,a)=>s+(parseFloat(a.monto)||0),0);
-  const saldo=totalIn-totalEg;
-  const disp=saldo-apartado;
+  const bal=totalIn-totalEg-apartado;
   document.getElementById('metrics').innerHTML=`
     <div class="metric"><div class="mlabel">Ingresos</div><div class="mval pos">${fmt(totalIn)}</div></div>
     <div class="metric"><div class="mlabel">Egresos</div><div class="mval neg">${fmt(totalEg)}</div></div>
-    <div class="metric"><div class="mlabel">Ahorro apartado</div><div class="mval" style="color:var(--accent)">${apartado>0?'-'+fmt(apartado):fmt(0)}</div></div>
-    <div class="metric"><div class="mlabel">Balance neto</div><div class="mval ${saldo>=0?'pos':'neg'}">${fmt(saldo)}</div></div>
-    <div class="metric full"><div class="mlabel">Disponible (después de ahorro)</div><div class="mval ${disp>=0?'pos':'neg'}">${fmt(disp)}</div></div>`;
+    <div class="metric"><div class="mlabel">Balance neto</div><div class="mval ${bal>=0?'pos':'neg'}">${fmt(bal)}</div></div>
+    <div class="metric"><div class="mlabel">Ahorro</div><div class="mval" style="color:var(--green)">${fmt(apartado)}</div></div>`;
   const secTitle=document.querySelector('#tab-resumen .sec-title');
   if(secTitle)secTitle.textContent=negocioActivo==='all'?'Por cuenta':'Cuenta · '+negocioActivo;
   document.getElementById('cuentas-list').innerHTML=cuentasView.map(ct=>{
