@@ -240,6 +240,9 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
 .kk-presup-name{flex:1;font-size:13px;}
 .kk-presup-row input{width:130px;flex-shrink:0;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--r2);font-size:14px;background:var(--bg3);color:var(--text);font-family:'DM Mono',monospace;outline:none;text-align:right;-webkit-appearance:none;appearance:none;}
 .kk-presup-row input:focus,.kk-map-row select:focus{border-color:var(--accent);}
+.presu-pctwrap{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;flex-shrink:0;}
+.presu-pct{width:54px;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r2);font-size:14px;background:var(--bg3);color:var(--text);font-family:'DM Mono',monospace;outline:none;text-align:right;-webkit-appearance:none;appearance:none;}
+.presu-pct:focus{border-color:var(--accent);}
 
 /* KAKEBO - VIEW */
 .kk-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 15px;margin-bottom:10px;}
@@ -304,6 +307,21 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
       <div class="card" id="cuentas-list"></div>
       <div class="sec-title" style="margin-top:16px;">Ingresos vs egresos</div>
       <div class="chart-wrap"><canvas id="chart1" role="img" aria-label="Ingresos y egresos por cuenta"></canvas></div>
+      <div class="filter-row" style="margin-top:20px;">
+        <select id="fil-tend-tipo" onchange="renderTendencia()">
+          <option value="balance">Balance neto</option>
+          <option value="ingreso">Solo ingresos</option>
+          <option value="egreso">Solo egresos</option>
+        </select>
+      </div>
+      <div class="sec-title">Evolución mensual</div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="chart-tend" role="img" aria-label="Tendencia mensual por cuenta"></canvas></div>
+      <div style="height:20px;"></div>
+      <div class="sec-title">Mejor mes por cuenta</div>
+      <div class="card" id="best-months"></div>
+      <div style="height:8px;"></div>
+      <div class="sec-title">Promedio mensual</div>
+      <div class="metric-grid" id="promedios"></div>
     </div>
 
     <!-- AHORRO -->
@@ -354,23 +372,14 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
       <div class="card" style="padding:0 16px;" id="cat-list"></div>
     </div>
 
-    <!-- TENDENCIA -->
-    <div class="section" id="tab-tendencia">
-      <div class="filter-row">
-        <select id="fil-tend-tipo" onchange="renderTendencia()">
-          <option value="balance">Balance neto</option>
-          <option value="ingreso">Solo ingresos</option>
-          <option value="egreso">Solo egresos</option>
-        </select>
+    <!-- PRESUPUESTO -->
+    <div class="section" id="tab-presupuesto">
+      <div class="welcome">
+        <div class="welcome-date">Presupuesto</div>
+        <div class="welcome-title">Gasto por <span>negocio</span></div>
       </div>
-      <div class="sec-title">Evolución mensual</div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="chart-tend" role="img" aria-label="Tendencia mensual por cuenta"></canvas></div>
-      <div style="height:20px;"></div>
-      <div class="sec-title">Mejor mes por cuenta</div>
-      <div class="card" id="best-months"></div>
-      <div style="height:8px;"></div>
-      <div class="sec-title">Promedio mensual</div>
-      <div class="metric-grid" id="promedios"></div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.45;">Poné qué % de sus ingresos puede gastar cada negocio. La app calcula el tope en pesos y te muestra cuánto llevás gastado.</div>
+      <div id="presu-list"></div>
     </div>
 
     <!-- CONFIG -->
@@ -419,7 +428,7 @@ body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sa
     <button class="nav-btn" onclick="showTab('ahorro')" id="nav-ahorro"><i class="ti ti-pig-money" aria-hidden="true"></i><span>Ahorro</span></button>
     <button class="nav-btn" onclick="showTab('historial')" id="nav-historial"><i class="ti ti-list" aria-hidden="true"></i><span>Historial</span></button>
     <button class="nav-btn" onclick="showTab('categorias')" id="nav-categorias"><i class="ti ti-tag" aria-hidden="true"></i><span>Categ.</span></button>
-    <button class="nav-btn" onclick="showTab('tendencia')" id="nav-tendencia"><i class="ti ti-trending-up" aria-hidden="true"></i><span>Tendencia</span></button>
+    <button class="nav-btn" onclick="showTab('presupuesto')" id="nav-presupuesto"><i class="ti ti-target" aria-hidden="true"></i><span>Presup.</span></button>
     <button class="nav-btn" onclick="showTab('config')" id="nav-config"><i class="ti ti-settings" aria-hidden="true"></i><span>Config</span></button>
   </nav>
 
@@ -496,7 +505,7 @@ async function loadConfig(){
 }
 
 function showTab(t){
-  ['registrar','resumen','ahorro','historial','categorias','tendencia','config'].forEach(s=>{
+  ['registrar','resumen','ahorro','historial','categorias','presupuesto','config'].forEach(s=>{
     document.getElementById('tab-'+s).classList.toggle('active',s===t);
     document.getElementById('nav-'+s).classList.toggle('active',s===t);
   });
@@ -505,7 +514,7 @@ function showTab(t){
   if(t==='ahorro'){loadFromSheets().then(()=>renderAhorro());}
   if(t==='historial'){populateSelects();loadFromSheets().then(()=>renderHistorial());}
   if(t==='categorias'){loadFromSheets().then(()=>renderCategorias());}
-  if(t==='tendencia'){loadFromSheets().then(()=>renderTendencia());}
+  if(t==='presupuesto'){loadFromSheets().then(()=>renderPresupuesto());}
   if(t==='registrar'){populateSelects();renderFraseDia();}
   if(t==='config')renderConfig();
 }
@@ -533,7 +542,7 @@ function reRenderActive(){
   if(tab==='resumen')renderResumen();
   else if(tab==='historial')renderHistorial();
   else if(tab==='categorias')renderCategorias();
-  else if(tab==='tendencia')renderTendencia();
+  else if(tab==='presupuesto')renderPresupuesto();
   else if(tab==='ahorro')renderAhorro();
 }
 function onNegocioChange(){
@@ -748,6 +757,45 @@ function renderResumen(){
     x:{ticks:{color:'#555',font:{size:10},autoSkip:false},grid:{display:false},border:{color:'#1e1e1e'}},
     y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'k',color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,0.03)'},border:{color:'#1e1e1e'}}
   }}});
+  renderTendencia();
+}
+
+/* PRESUPUESTO */
+function setPresuNegocio(cuenta,v){
+  const c=lc();c.presuNegocio=c.presuNegocio||{};
+  const n=parseFloat(v);
+  if(n>0)c.presuNegocio[cuenta]=n;else delete c.presuNegocio[cuenta];
+  sc(c);renderPresupuesto();
+}
+function renderPresupuesto(){
+  const data=ld(),c=lc();
+  const pre=c.presuNegocio||{};
+  const cuentas=negocioActivo==='all'?c.cuentas:[negocioActivo];
+  const inMes=d=>mesActivo==='all'||getMesKey(d.fecha||d.fechaStr)===mesActivo;
+  const el=document.getElementById('presu-list');if(!el)return;
+  el.innerHTML=cuentas.length?cuentas.map(ct=>{
+    const ing=data.filter(d=>d.cuenta===ct&&d.tipo==='ingreso'&&inMes(d)).reduce((a,d)=>a+d.monto,0);
+    const eg=data.filter(d=>d.cuenta===ct&&d.tipo==='egreso'&&inMes(d)).reduce((a,d)=>a+d.monto,0);
+    const pct=pre[ct]||0;
+    const tope=ing*pct/100;
+    const rawPct=tope>0?Math.round(eg/tope*100):0;
+    const barPct=Math.min(rawPct,100);
+    const over=tope>0&&eg>tope;
+    const queda=tope-eg;
+    const safe=ct.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return`<div class="kk-card">
+      <div class="kk-card-top">
+        <span class="kk-card-name">${ct}</span>
+        <span class="presu-pctwrap"><input class="presu-pct" type="number" inputmode="decimal" value="${pct||''}" placeholder="—" onchange="setPresuNegocio('${safe}',this.value)"><span>%</span></span>
+      </div>
+      <div class="kk-card-vals" style="margin-bottom:8px">Ingresos: ${fmt(ing)} · Tope: ${tope>0?fmt(tope):'—'} · Gastado: ${fmt(eg)}</div>
+      <div class="kk-bar"><div class="kk-bar-fill" style="width:${tope>0?barPct:0}%;background:${over?'var(--red)':'var(--accent)'}"></div></div>
+      <div class="kk-card-sub">
+        <span>${tope>0?rawPct+'% usado del tope':'Poné un % para fijar el tope'}</span>
+        <span style="color:${over?'var(--red)':(tope>0?'var(--green)':'var(--text3)')}">${tope>0?(over?'Excedido '+fmt(-queda):'Queda '+fmt(queda)):''}</span>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty">Agregá cuentas primero en Config</div>';
 }
 
 /* HISTORIAL */
